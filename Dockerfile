@@ -2,9 +2,7 @@
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-# --ignore-scripts: better-sqlite3 ships prebuilt binaries in the package; without this flag `npm ci`
-# falls back to `node-gyp rebuild`, which needs python/make/g++ (absent from the slim image).
-RUN npm ci --ignore-scripts
+RUN npm ci
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
@@ -19,8 +17,10 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    DATABASE_PATH=/app/data/app.db
-# non-root user + writable data dir (mount a volume here to persist SQLite)
+    PGLITE_DIR=/app/data/pgdata
+# Production sets DATABASE_URL (managed Postgres). Without it the app falls back to embedded
+# Postgres (PGlite) in PGLITE_DIR: mount a volume at /app/data to persist it.
+# non-root user + writable data dir
 RUN mkdir -p /app/data && chown -R node:node /app
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static

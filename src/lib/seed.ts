@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+import type { Db } from "./db";
 
 const USERS = [
   { id: "u_alice", name: "Alice", email: "alice@example.com" },
@@ -23,21 +23,20 @@ const SAMPLE_CONTENT = {
   ],
 };
 
-/** Idempotent: INSERT OR IGNORE on fixed ids, so re-running never duplicates. */
-export function seed(db: Database.Database): void {
-  const insertUser = db.prepare(
-    "INSERT OR IGNORE INTO users (id, name, email) VALUES (@id, @name, @email)"
+/** Idempotent: ON CONFLICT DO NOTHING on fixed ids, so re-running never duplicates. */
+export async function seed(db: Db): Promise<void> {
+  for (const u of USERS) {
+    await db.query(
+      "INSERT INTO users (id, name, email) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+      [u.id, u.name, u.email]
+    );
+  }
+  await db.query(
+    "INSERT INTO documents (id, owner_id, title, content_json) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+    ["d_sample", "u_alice", "Welcome to Ajaia Docs", JSON.stringify(SAMPLE_CONTENT)]
   );
-  const insertDoc = db.prepare(
-    "INSERT OR IGNORE INTO documents (id, owner_id, title, content_json) VALUES (?, ?, ?, ?)"
+  await db.query(
+    "INSERT INTO document_shares (document_id, user_id, permission) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+    ["d_sample", "u_bob", "edit"]
   );
-  const insertShare = db.prepare(
-    "INSERT OR IGNORE INTO document_shares (document_id, user_id, permission) VALUES (?, ?, ?)"
-  );
-
-  db.transaction(() => {
-    for (const u of USERS) insertUser.run(u);
-    insertDoc.run("d_sample", "u_alice", "Welcome to Ajaia Docs", JSON.stringify(SAMPLE_CONTENT));
-    insertShare.run("d_sample", "u_bob", "edit");
-  })();
 }

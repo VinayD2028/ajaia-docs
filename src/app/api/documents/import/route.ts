@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     if (!(file instanceof File)) return err("Missing 'file' field", 400);
 
     const { title, content } = await importFile(file.name, Buffer.from(await file.arrayBuffer()));
-    const id = createDocument(getDb(), user.id, title, JSON.stringify(content));
+    const id = await createDocument(await getDb(), user.id, title, JSON.stringify(content));
     return NextResponse.json({ id }, { status: 201 });
   } catch (e) {
     return handleError(e);

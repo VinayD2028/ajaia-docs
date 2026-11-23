@@ -2,7 +2,7 @@
 
 ## Links
 
-- **Live product URL:** <!-- TODO(candidate): Render URL -->
+- **Live product URL:** https://ajaia-docs-eu0h.onrender.com (Render free plan; the first request after idle can take about a minute to wake)
 - **Walkthrough video:** see `WALKTHROUGH_VIDEO.txt` <!-- TODO(candidate): record and paste the unlisted link there -->
 - **Google Drive folder:** <!-- TODO(candidate): folder link -->
 
@@ -16,7 +16,7 @@ Note: on the live free host, documents you create are lost when the instance sle
 
 | Path | Contents |
 |---|---|
-| `src/`, `tests/`, `scripts/`, `public/`, config files | Source code, 43 unit tests, HTTP smoke script, fixtures |
+| `src/`, `tests/`, `scripts/`, `public/`, config files | Source code, 44 unit tests, HTTP smoke script, fixtures |
 | `Dockerfile`, `.dockerignore`, `render.yaml` | Container and free-host deployment config |
 | `README.md` | Local setup/run/test instructions, demo script, API summary, limitations |
 | `docs/ARCHITECTURE.md` | Architecture and tradeoffs note |
@@ -32,16 +32,15 @@ Note: on the live free host, documents you create are lost when the instance sle
 
 Create, rename, edit (bold, italic, underline, H1-H3, bullet and numbered lists), autosave, save and reopen; import of
 .txt/.md/.docx into a new document; owner-only sharing with view/edit permission and clear owned vs shared lists;
-persistence of content and sharing in SQLite; validation and error handling; 43 passing unit tests and a 54-check HTTP
+persistence of content and sharing in Postgres (Render free database in production, embedded PGlite locally); validation and error handling; 44 passing unit tests and a 54-check HTTP
 smoke script; production build and health check.
 
 ## What is incomplete
 
 - Authentication is mocked (seeded users, unsigned cookie).
 - Last write wins on concurrent edits; no real-time collaboration or presence.
-- Live-site data is not durable (free host, ephemeral disk).
+- Live-site database is Render's free Postgres, which Render deletes 30 days after creation (14-day grace); data survives sleeps and redeploys until then.
 - `.docx` import drops tables and images; no document delete or export UI.
-- `docker build` itself was not run in the author's sandbox (no Docker daemon); see README. <!-- TODO(candidate): remove once the Render build succeeds -->
 
 ## What I would build next with another 2-4 hours
 

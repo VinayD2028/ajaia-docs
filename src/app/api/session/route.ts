@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { findUserById } from "@/lib/shares";
 import { SESSION_COOKIE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +16,7 @@ export async function POST(req: Request) {
   if (typeof userId !== "string" || userId.length === 0) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
-  const user = getDb()
-    .prepare("SELECT id, name, email FROM users WHERE id = ?")
-    .get(userId);
+  const user = await findUserById(await getDb(), userId);
   if (!user) {
     return NextResponse.json({ error: "Unknown user" }, { status: 404 });
   }

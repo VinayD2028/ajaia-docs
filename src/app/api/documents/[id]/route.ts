@@ -13,11 +13,11 @@ export async function GET(_req: Request, { params }: Ctx) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
-  const db = getDb();
-  const access = getAccess(db, id, user.id);
+  const db = await getDb();
+  const access = await getAccess(db, id, user.id);
   // 404 (not 403) when no access, so ids of other users' docs aren't leaked.
   if (!access) return err("Document not found", 404);
-  const doc = getDocument(db, id)!;
+  const doc = (await getDocument(db, id))!;
   return NextResponse.json({
     document: {
       id: doc.id,
@@ -35,8 +35,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
-  const db = getDb();
-  const access = getAccess(db, id, user.id);
+  const db = await getDb();
+  const access = await getAccess(db, id, user.id);
   if (!access) return err("Document not found", 404);
   if (!canEdit(access)) return err("You have view-only access", 403);
   try {
@@ -48,9 +48,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
     // Validate everything before writing anything.
     const title = body.title === undefined ? undefined : validateTitle(body.title);
     const contentJson = body.content === undefined ? undefined : validateContent(body.content);
-    if (title !== undefined) renameDocument(db, id, title);
-    if (contentJson !== undefined) saveContent(db, id, contentJson);
-    return NextResponse.json({ ok: true, updated_at: getDocument(db, id)!.updated_at });
+    if (title !== undefined) await renameDocument(db, id, title);
+    if (contentJson !== undefined) await saveContent(db, id, contentJson);
+    return NextResponse.json({ ok: true, updated_at: (await getDocument(db, id))!.updated_at });
   } catch (e) {
     return handleError(e);
   }
@@ -60,10 +60,10 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
   const { id } = await params;
-  const db = getDb();
-  const access = getAccess(db, id, user.id);
+  const db = await getDb();
+  const access = await getAccess(db, id, user.id);
   if (!access) return err("Document not found", 404);
   if (access !== "owner") return err("Only the owner can delete a document", 403);
-  deleteDocument(db, id);
+  await deleteDocument(db, id);
   return NextResponse.json({ ok: true });
 }

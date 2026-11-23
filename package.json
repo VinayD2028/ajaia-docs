@@ -11,21 +11,22 @@
     "test:smoke": "bash scripts/api-smoke.sh"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.6.0",
     "@tiptap/html": "^3.35.0",
     "@tiptap/pm": "^3.35.0",
     "@tiptap/react": "^3.35.0",
     "@tiptap/starter-kit": "^3.35.0",
-    "better-sqlite3": "^13.2.0",
     "mammoth": "^1.13.0",
     "marked": "^18.2.1",
     "next": "16.4.6",
+    "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
-    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

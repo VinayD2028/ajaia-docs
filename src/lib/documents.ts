@@ -1,6 +1,5 @@
-import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
-import type { Permission } from "./db";
+import { SQL_NOW, type Db, type Permission } from "./db";
 
 export interface DocSummary {
   id: string;
@@ -23,57 +22,56 @@ export interface DocRecord {
 
 export const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
 
-export function listDocuments(db: Database.Database, userId: string) {
-  const owned = db
-    .prepare(
-      `SELECT d.id, d.title, d.updated_at, u.name AS owner_name,
-              (SELECT COUNT(*) FROM document_shares s WHERE s.document_id = d.id) AS share_count
-       FROM documents d JOIN users u ON u.id = d.owner_id
-       WHERE d.owner_id = ? ORDER BY d.updated_at DESC, d.rowid DESC`
-    )
-    .all(userId) as DocSummary[];
-  const shared = db
-    .prepare(
-      `SELECT d.id, d.title, d.updated_at, u.name AS owner_name, s.permission
-       FROM document_shares s
-       JOIN documents d ON d.id = s.document_id
-       JOIN users u ON u.id = d.owner_id
-       WHERE s.user_id = ? ORDER BY d.updated_at DESC, d.rowid DESC`
-    )
-    .all(userId) as DocSummary[];
+export async function listDocuments(db: Db, userId: string) {
+  const owned = await db.query<DocSummary>(
+    `SELECT d.id, d.title, d.updated_at, u.name AS owner_name,
+            (SELECT COUNT(*)::int FROM document_shares s WHERE s.document_id = d.id) AS share_count
+     FROM documents d JOIN users u ON u.id = d.owner_id
+     WHERE d.owner_id = $1 ORDER BY d.updated_at DESC, d.seq DESC`,
+    [userId]
+  );
+  const shared = await db.query<DocSummary>(
+    `SELECT d.id, d.title, d.updated_at, u.name AS owner_name, s.permission
+     FROM document_shares s
+     JOIN documents d ON d.id = s.document_id
+     JOIN users u ON u.id = d.owner_id
+     WHERE s.user_id = $1 ORDER BY d.updated_at DESC, d.seq DESC`,
+    [userId]
+  );
   return { owned, shared };
 }
 
-export function createDocument(
-  db: Database.Database,
+export async function createDocument(
+  db: Db,
   ownerId: string,
   title = "Untitled document",
   contentJson = JSON.stringify(EMPTY_DOC)
-): string {
+): Promise<string> {
   const id = randomUUID();
-  db.prepare(
-    "INSERT INTO documents (id, owner_id, title, content_json) VALUES (?, ?, ?, ?)"
-  ).run(id, ownerId, title, contentJson);
+  await db.query(
+    "INSERT INTO documents (id, owner_id, title, content_json) VALUES ($1, $2, $3, $4)",
+    [id, ownerId, title, contentJson]
+  );
   return id;
 }
 
-export function getDocument(db: Database.Database, id: string): DocRecord | undefined {
-  return db
-    .prepare(
-      `SELECT d.*, u.name AS owner_name
-       FROM documents d JOIN users u ON u.id = d.owner_id WHERE d.id = ?`
-    )
-    .get(id) as DocRecord | undefined;
+export async function getDocument(db: Db, id: string): Promise<DocRecord | undefined> {
+  const [row] = await db.query<DocRecord>(
+    `SELECT d.id, d.owner_id, d.title, d.content_json, d.created_at, d.updated_at, u.name AS owner_name
+     FROM documents d JOIN users u ON u.id = d.owner_id WHERE d.id = $1`,
+    [id]
+  );
+  return row;
 }
 
-export function renameDocument(db: Database.Database, id: string, title: string) {
-  db.prepare("UPDATE documents SET title = ?, updated_at = datetime('now') WHERE id = ?").run(title, id);
+export async function renameDocument(db: Db, id: string, title: string) {
+  await db.query(`UPDATE documents SET title = $1, updated_at = ${SQL_NOW} WHERE id = $2`, [title, id]);
 }
 
-export function saveContent(db: Database.Database, id: string, contentJson: string) {
-  db.prepare("UPDATE documents SET content_json = ?, updated_at = datetime('now') WHERE id = ?").run(contentJson, id);
+export async function saveContent(db: Db, id: string, contentJson: string) {
+  await db.query(`UPDATE documents SET content_json = $1, updated_at = ${SQL_NOW} WHERE id = $2`, [contentJson, id]);
 }
 
-export function deleteDocument(db: Database.Database, id: string) {
-  db.prepare("DELETE FROM documents WHERE id = ?").run(id);
+export async function deleteDocument(db: Db, id: string) {
+  await db.query("DELETE FROM documents WHERE id = $1", [id]);
 }

@@ -337,6 +337,71 @@ ACCEPTANCE CRITERIA
 **Iteration:** none for the prompt; the README and `.npmrc` were fixed from what the clean-copy run showed.
 **Decision / Tradeoff:** Chose a repo-wide `.npmrc` (`ignore-scripts=true`) over documenting `npm install --ignore-scripts` in the README: a reviewer following any default command works, at the cost of disabling lifecycle scripts for all dependencies (acceptable here: only `fsevents` was affected). Rejected: pinning an older better-sqlite3 that has an install script, because it would add a network download step at install time.
 
+### [#9] [P8 Deploy] [~13:17-13:40 / ~32-55 min elapsed]
+**Goal:** Put the code on GitHub and deploy it to a free live URL (Render), then verify it live.
+**Prompt:**
+````text
+No pre-written prompt: this step was driven interactively by the user's decisions rather than a single prompt. Instructions in effect:
+- "I'll do it with Claude in Chrome": use the user's signed-in Chrome for GitHub and Render, and ask before each account-changing action.
+- Keep SQLite on Render's free plan (ephemeral disk accepted and documented).
+- Create a PUBLIC GitHub repo `ajaia-docs`; Claude uploads files through GitHub's web uploader.
+- Deploy through a Render Blueprint (`render.yaml`), then verify health, the three-user sharing flow and the seeded data on the live URL.
+````
+**Result:** Public repo `VinayD2028/ajaia-docs` (70 files) and a free Docker web service on Render, live at https://ajaia-docs-eu0h.onrender.com. First build took 1 min 52 s. `/api/health` returns `{"ok":true,"db":true}`.
+**Issues / Verification:**
+- **Blocked, not worked around:** my request for access to the user's Documents folder was denied by the auto-mode classifier, so I stopped and asked. The user then connected a specific folder themselves. The Chrome upload tool still refused files that I had written into that connected folder ("only files this session is allowed to read"); I did not try to bypass it. The user has no `git` installed on Windows, so the user drag-and-dropped the files onto GitHub's upload page instead.
+- GitHub's web uploader rejects hidden files, so I created `.npmrc`, `.dockerignore` and `.gitignore` through GitHub's editor (prefilled via URL). Before the user committed, I compared the uploader's file list with the project: 67 expected, 67 present, none missing or extra.
+- One of my clicks missed the Render 'Deploy Blueprint' button because the page layout had shifted; nothing was created by the miss. I re-located the button by reference before the real click, after the user confirmed.
+- **This was the real `docker build`** that I could not run in my sandbox; it succeeded on Render, which also confirms the `--ignore-scripts` fix in the Dockerfile.
+- Live verification (JS calls from the live origin): 401 without cookie; create 201; PATCH 200; share with Bob (view) 201; Bob GET access=view; Bob PATCH 403; Bob's shared list correct; Carol 404; Alice upgrades Bob 200; Bob PATCH 200; cleanup DELETE 200; seeded doc present.
+- **Bug found only on the live site, in the user's dark-mode Chrome:** the template's CSS switched to a dark page background with light text on dark-mode systems, but my cards use `bg-white`, so titles were nearly invisible. My headless Playwright tests all ran in light mode and could not catch it. Fixed by removing the `prefers-color-scheme: dark` block and setting `color-scheme: light`. Verified locally with a forced dark color scheme (dark text on white in both modes), committed through GitHub's editor (hash of the result matched my local file exactly), auto-deployed, and re-checked live in the same browser.
+- Not verified: the live import UI (the Chrome tool cannot select local files for me); import was verified locally and by the smoke script. Only Chrome was used.
+**Iteration:** docs updated with the live URL; the 'Docker build unverified' notes were removed because Render built the image.
+**Decision / Tradeoff:** Public repo (simplest for Render, no extra GitHub permissions) over a private repo (hides source, needs authorizing Render's GitHub app). Used GitHub's web uploader (user drag-and-drop) over asking the user to install git. Accepted that auto-deploy from `main` resets the free instance's data on every commit.
+
+---
+
+### [#10] [P9 Persistence] [~13:44-13:55 / ~59-70 min elapsed]
+**Goal:** Stop the live site from losing documents on sleep/redeploy (the ephemeral-disk tradeoff accepted in #9), without any secret the user must paste.
+**Prompt:**
+````text
+ROLE
+Senior full-stack engineer continuing Ajaia Docs (Next.js 16, TS strict). Everything works and is deployed on Render's free web service, but the SQLite file lives on an ephemeral disk, so user documents are lost whenever the instance sleeps or redeploys. Fix persistence WITHOUT adding any secret that a human must paste anywhere.
+
+DECISION ALREADY MADE
+Use Render's free Postgres, wired into the web service through the Blueprint (`databases:` + `fromDatabase` connection string). Use ONE SQL dialect everywhere: Postgres in production through `pg`, and PGlite (@electric-sql/pglite, in-process Postgres/WASM) when DATABASE_URL is not set (local dev, Docker with a volume, and all tests). Remove better-sqlite3.
+
+TASK
+1. src/lib/db.ts: define a small async interface `Db { query<T>(sql, params?): Promise<T[]>; exec(sql): Promise<void> }` with two implementations selected at runtime: `pg.Pool` when DATABASE_URL is set (SSL only when DATABASE_SSL=true), otherwise PGlite persisted at PGLITE_DIR (default ./data/pgdata) or in memory when the dir is 'memory://'. `openDatabase(target)` creates the schema (idempotent CREATE TABLE IF NOT EXISTS + a unique index on lower(email)) and seeds. `getDb()` returns a cached Promise<Db> on globalThis; if opening fails, clear the cache so the next call can retry. PGlite must be loaded with a dynamic import only on the no-DATABASE_URL path so production never loads it.
+2. Port every SQL statement to Postgres ($1 placeholders, now(), ON CONFLICT, COUNT(*)::int, `RETURNING` instead of changes/rowCount). Keep the HTTP/API behaviour and JSON shapes IDENTICAL: timestamps must still be 'YYYY-MM-DD HH24:MI:SS' UTC strings (use to_char; remember ORDER BY must reference the qualified column, not the text alias).
+3. Make all data-layer functions async (access, documents, shares, seed) and await them in every route handler, page and the health check. No behaviour changes to validation, status codes or the 404-not-403 rule.
+4. Tests: convert to async; use ONE PGlite instance per test file (reset with TRUNCATE + reseed in beforeEach) so the suite stays fast. Keep every existing assertion; keep the DB-level CHECK constraint test. Add a test that the schema/seed is idempotent against a persisted PGlite directory (open twice, rows not duplicated, edits not overwritten).
+5. Blueprint/Docker: render.yaml gets a free Postgres database and sets DATABASE_URL on the web service from it; remove the 'ephemeral disk' comment. Dockerfile no longer needs `--ignore-scripts` or the node-gyp explanation, and `.npmrc` is deleted. Update README, ARCHITECTURE, SUBMISSION and AI_WORKFLOW text that mentions SQLite/ephemeral data (state the 30-day free Postgres expiry honestly).
+
+CONSTRAINTS
+- No behaviour regressions: the existing 54-check smoke script must pass unchanged against the new backend, and all existing test cases must be preserved.
+- Parameterized queries only. No new dependencies besides pg, @electric-sql/pglite, @types/pg.
+- Do not weaken or delete a test to make it pass.
+
+OUTPUT FORMAT
+Files changed; test output; smoke-script output; a clean-copy run of the README steps; what could NOT be verified locally (e.g. real `pg` against Render's managed Postgres).
+
+ACCEPTANCE CRITERIA
+- `npm test`, `npm run lint`, `tsc --noEmit`, `next build` pass; smoke script 54/54 on the dev server and on `npm start`.
+- Restarting the server keeps documents (PGlite dir), and a second `openDatabase` on the same dir does not duplicate seed data.
+- The `pg` code path is exercised against a real Postgres server (install one locally or run `pg` against a throwaway Postgres in the sandbox) before deploy.
+````
+**Result:** Data layer ported to async Postgres: `pg` in production (Render free Postgres declared in `render.yaml`, `DATABASE_URL` injected by `fromDatabase`), embedded PGlite when `DATABASE_URL` is unset (local dev, tests). `better-sqlite3`, `.npmrc` and the `--ignore-scripts` workaround were removed. API JSON shapes and status codes unchanged.
+**Issues / Verification:**
+- Tests: 44 pass (43 ported + 1 new restart-persistence test on an on-disk PGlite dir). The same 16 access/shares/documents tests also pass against a real local Postgres 16 server through `pg` (`TEST_DATABASE_URL`).
+- My ported test had a real bug (`await listDocuments(...).owned` reads a property of a Promise); tsc and the test run caught it, I fixed it.
+- Smoke script 54/54 against (a) `next start` + real Postgres, (b) the standalone build from a clean unzip + real Postgres. Restart persistence checked on the standalone build with PGlite: my first attempt was invalid (the old server still held the port, so the second start failed with EADDRINUSE); I noticed from the log, redid it with a verified shutdown, and the document survived the restart.
+- DB unreachable: `/api/health` returns 503 instead of crashing.
+- Clean unzip: `npm ci` (no flags), tests, lint, build all pass.
+- NOT verified: Render's managed Postgres itself (internal URL, whether TLS is required, free-tier behaviour); only a local server was used. `DATABASE_SSL=true` exists as a fallback. No Docker daemon in my sandbox, so the first real image build of this version happens on Render.
+**Iteration:** README, ARCHITECTURE, SUBMISSION, AI_WORKFLOW and the video outline updated; the 30-day free Postgres expiry is stated openly.
+**Decision / Tradeoff:** Render free Postgres over Turso: no account token for the user to paste and one `render.yaml`, but Render deletes free databases 30 days after creation (14-day grace). One dialect (Postgres via PGlite locally) over keeping SQLite locally, so tests exercise the production SQL. Cost: pushing this adds a database to the user's Render account, so I will ask before syncing.
+
 ---
 
 ## Summary of AI Usage (DRAFT, to be finalized at the end)

@@ -12,7 +12,7 @@ export async function GET(_req: Request, { params }: Ctx) {
   const { id } = await params;
   const guard = await requireOwner(id);
   if (guard instanceof NextResponse) return guard;
-  return NextResponse.json({ shares: listShares(guard.db, id) });
+  return NextResponse.json({ shares: await listShares(guard.db, id) });
 }
 
 export async function POST(req: Request, { params }: Ctx) {
@@ -24,11 +24,11 @@ export async function POST(req: Request, { params }: Ctx) {
     rejectUnknownFields(body, ["email", "permission"]);
     const email = validateEmail(body.email);
     const permission = validatePermission(body.permission);
-    const target = findUserByEmail(guard.db, email);
+    const target = await findUserByEmail(guard.db, email);
     if (!target) return err("No user with that email", 404);
     if (target.id === guard.user.id) return err("You already own this document", 400);
-    upsertShare(guard.db, id, target.id, permission);
-    return NextResponse.json({ shares: listShares(guard.db, id) }, { status: 201 });
+    await upsertShare(guard.db, id, target.id, permission);
+    return NextResponse.json({ shares: await listShares(guard.db, id) }, { status: 201 });
   } catch (e) {
     return handleError(e);
   }

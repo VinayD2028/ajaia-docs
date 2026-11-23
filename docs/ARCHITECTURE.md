@@ -10,8 +10,8 @@ collaboration and rich import fidelity on purpose (see Tradeoffs).
 
 ## Stack
 
-Next.js 16 (App Router) + TypeScript strict + Tailwind v4; TipTap v3 (ProseMirror) editor; SQLite via
-better-sqlite3; Vitest. One deployable unit: pages and API routes live in the same Next.js app, so there is no
+Next.js 16 (App Router) + TypeScript strict + Tailwind v4; TipTap v3 (ProseMirror) editor; Postgres
+(`pg` in production, embedded PGlite for local dev and tests); Vitest. One deployable unit: pages and API routes live in the same Next.js app, so there is no
 CORS, no second service, and one Dockerfile.
 
 ## Data model
@@ -31,7 +31,7 @@ opened lazily (a globalThis singleton) so `next build` never touches the filesys
 ## Access model
 
 `getAccess(db, docId, userId)` returns `owner | edit | view | null` and is the single source of truth. It takes the
-db as a parameter, so it is unit-tested against in-memory SQLite. Rules: no access -> **404** (not 403) so ids are not
+db as a parameter, so it is unit-tested against a real in-process Postgres (PGlite). Rules: no access -> **404** (not 403) so ids are not
 leaked; view-only writes -> 403; only the owner can delete or manage shares. Sharing is by email with an upsert,
 so re-sharing updates the permission. The permission is also checked in the UI (read-only editor, hidden toolbar and
 Share button), but the server is what enforces it.
@@ -51,7 +51,7 @@ Save failed. A failed save stays dirty and retries on the next change; pending e
 
 ## Testing strategy
 
-- **Unit (43 tests):** access, shares, documents, validation and import, using real SQLite (`:memory:`) rather than
+- **Unit (44 tests):** access, shares, documents, validation and import, using real Postgres (PGlite in memory; also run against a real server) rather than
   mocks. I checked the tests can fail by temporarily breaking three behaviors and confirming they were caught.
 - **HTTP smoke script (54 checks):** status codes, cookies, sharing and import end to end against a running server.
   Route handlers need the Next.js runtime (`cookies()`), so I chose this over mocking `next/headers`.
@@ -61,10 +61,11 @@ Save failed. A failed save stays dirty and retries on the next change; pending e
 ## Deployment
 
 Multi-stage Dockerfile (Node 22, non-root, `output: 'standalone'`, `/api/health` healthcheck) deployed to Render's free
-plan via `render.yaml`. **Ephemeral disk:** the free plan has no persistent volume, so SQLite data is lost on sleep or
-redeploy and is reseeded on boot. I accepted this to stay within "no paid dependency" and keep setup simple. The Docker
-volume instructions in the README show the persistent setup; a hosted database (for example libSQL/Turso or Postgres)
-is the real fix.
+plan via `render.yaml`. **Persistence:** the free web plan has no persistent disk, so the app stores data in a Render free Postgres
+database declared in the same Blueprint (`DATABASE_URL` injected via `fromDatabase`, no secrets to paste). Data
+survives sleep and redeploys. Limitation: Render expires free databases 30 days after creation (14-day grace), so the
+live demo is durable for a month, not forever. The first version used SQLite on the ephemeral disk; I moved to
+Postgres once the live site showed the data loss, using the same dialect locally via PGlite so tests exercise real SQL.
 
 ## Tradeoffs and deliberate scope cuts
 
@@ -74,7 +75,7 @@ is the real fix.
 | Last-write-wins saves | Real-time/OT/CRDT is out of a 4-hour scope | Concurrent editors can overwrite each other |
 | Whole-doc autosave | Simple and reliable | Larger payloads on long docs |
 | docx import: text, headings, bold/italic/underline, lists only | Covers the common case | Tables/images dropped |
-| SQLite on an ephemeral disk | Free and zero-setup | Data resets on the live host |
+| Free Postgres on Render | No paid dependency, no secrets | Free database expires after 30 days |
 
 ## Security notes
 

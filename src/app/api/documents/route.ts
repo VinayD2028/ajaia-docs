@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
-  return NextResponse.json(listDocuments(getDb(), user.id));
+  return NextResponse.json(await listDocuments(await getDb(), user.id));
 }
 
 export async function POST(req: Request) {
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const body = req.headers.get("content-length") === "0" ? {} : await readJsonObject(req);
     rejectUnknownFields(body, ["title"]);
     const title = body.title === undefined ? undefined : validateTitle(body.title);
-    const id = createDocument(getDb(), user.id, title);
+    const id = await createDocument(await getDb(), user.id, title);
     return NextResponse.json({ id }, { status: 201 });
   } catch (e) {
     return handleError(e);

@@ -3,10 +3,10 @@
 A lightweight collaborative document editor (Google Docs-inspired): create, rename and edit rich-text
 documents, import files, and share documents between users. Built for the Ajaia full-stack assignment.
 
-- **Live app:** <!-- TODO(candidate): paste the Render URL after deploy -->
-- **Hosting caveat:** the free host has an ephemeral disk. Documents created on the live site are lost
-  when the instance sleeps (~15 min idle) or redeploys; the seeded users and sample document come back
-  on boot. The first request after sleep can take about a minute.
+- **Live app:** https://ajaia-docs-eu0h.onrender.com
+- **Hosting caveat:** data lives in a Render free Postgres database, so documents survive sleep and redeploys.
+  Render deletes free databases 30 days after creation (14-day grace period), so the live demo's data is
+  durable but not permanent. The first request after sleep (~15 min idle) can take about a minute.
 
 ## Test accounts (no passwords)
 
@@ -29,24 +29,24 @@ Pick a user from the dropdown (top right). This is **mock auth**, not real authe
 
 ## Run locally
 
-Prerequisite: **Node 22** (`engines` is pinned to 22.x). No C++ toolchain is needed: `better-sqlite3` ships a
-prebuilt binary and the committed `.npmrc` (`ignore-scripts=true`) stops npm from trying to compile it.
+Prerequisite: **Node 22** (`engines` is pinned to 22.x). No database install and no C++ toolchain are needed: without
+`DATABASE_URL` the app runs an embedded Postgres (PGlite, WASM) stored in `./data/pgdata`.
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000 ; creates ./data/app.db and seeds demo data on first request
+npm run dev          # http://localhost:3000 ; creates ./data/pgdata and seeds demo data on first request
 ```
 
 | Command | What it does |
 |---|---|
-| `npm test` | 43 unit tests (Vitest, real SQLite in memory) |
+| `npm test` | 44 unit tests (Vitest, real Postgres via embedded PGlite; set `TEST_DATABASE_URL` to run them against a server) |
 | `npm run test:smoke` | HTTP smoke script (needs a running server; `BASE=http://localhost:3000` by default) |
 | `npm run lint` | ESLint |
 | `npm run build && npm start` | Production build and server |
 
 To reset all data, stop the server and delete the `data/` directory.
 
-Environment variables: `DATABASE_PATH` (default `./data/app.db`), `PORT` (default 3000).
+Environment variables: `DATABASE_URL` (a `postgres://` URL; used in production), `DATABASE_SSL=true` (if the server needs TLS), `PGLITE_DIR` (embedded database directory when `DATABASE_URL` is unset; default `./data/pgdata`), `PORT` (default 3000).
 
 ## Features
 
@@ -56,7 +56,7 @@ Environment variables: `DATABASE_PATH` (default `./data/app.db`), `PORT` (defaul
   Conversion goes through the editor's schema, so unsupported markup (for example raw HTML or scripts) is dropped.
 - **Sharing:** the owner can share by email with *view* or *edit* permission, change it, or remove access.
   Dashboard separates **My documents** (with "Shared with N") from **Shared with me** (with Can view / Can edit).
-- **Persistence:** SQLite; content is stored as TipTap JSON so formatting survives refresh.
+- **Persistence:** Postgres (managed in production, embedded PGlite locally); content is stored as TipTap JSON so formatting survives refresh.
 - **Validation:** title 1-200 chars, content must be a doc object under 1 MB, unknown fields rejected,
   clear JSON errors (400/401/403/404), users with no access get 404 so document ids are not leaked.
 
@@ -64,14 +64,11 @@ Environment variables: `DATABASE_PATH` (default `./data/app.db`), `PORT` (defaul
 
 ```bash
 docker build -t ajaia-docs .
-docker run -p 3000:3000 -v ajaia-data:/app/data ajaia-docs     # volume keeps the SQLite file
+docker run -p 3000:3000 -v ajaia-data:/app/data ajaia-docs     # volume keeps the embedded Postgres data
+# or: -e DATABASE_URL=postgres://user:pass@host:5432/db  to use an external Postgres
 ```
 
-<!-- TODO(candidate): the author's sandbox had no Docker daemon, so `docker build` was not run locally.
-The build stages were reproduced in a clean directory instead. Confirm the Render build (which builds this
-Dockerfile) succeeded, then delete this note. -->
-`npm ci --ignore-scripts` is deliberate: `better-sqlite3` ships prebuilt binaries, and without the flag npm
-tries to compile it (needs python/make/g++, absent from the slim image). In production the login cookie is
+The Dockerfile is what the live site is built from. In production the login cookie is
 `Secure`: it works over HTTPS and on `http://localhost` in Chrome, but not on other plain-HTTP hosts.
 
 ## Project structure

@@ -3,8 +3,9 @@ import Editor from "@/components/Editor";
 import Header from "@/components/Header";
 import { getAccess } from "@/lib/access";
 import { getCurrentUser } from "@/lib/auth";
-import { getDb, type User } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { getDocument } from "@/lib/documents";
+import { listUsers } from "@/lib/shares";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +13,11 @@ export default async function DocPage({ params }: { params: Promise<{ id: string
   const user = await getCurrentUser();
   if (!user) redirect("/");
   const { id } = await params;
-  const db = getDb();
-  const access = getAccess(db, id, user.id);
+  const db = await getDb();
+  const access = await getAccess(db, id, user.id);
   if (!access) notFound();
-  const doc = getDocument(db, id)!;
-  const users = db.prepare("SELECT id, name, email FROM users ORDER BY name").all() as User[];
+  const doc = (await getDocument(db, id))!;
+  const users = await listUsers(db);
 
   return (
     <>

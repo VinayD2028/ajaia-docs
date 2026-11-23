@@ -2,15 +2,16 @@ import Dashboard from "@/components/Dashboard";
 import Header from "@/components/Header";
 import UserSwitcher from "@/components/UserSwitcher";
 import { getCurrentUser } from "@/lib/auth";
-import { getDb, type User } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { listDocuments } from "@/lib/documents";
+import { listUsers } from "@/lib/shares";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const user = await getCurrentUser();
-  const db = getDb();
-  const users = db.prepare("SELECT id, name, email FROM users ORDER BY name").all() as User[];
+  const db = await getDb();
+  const users = await listUsers(db);
 
   if (!user) {
     return (
@@ -22,7 +23,7 @@ export default async function Home() {
     );
   }
 
-  const { owned, shared } = listDocuments(db, user.id);
+  const { owned, shared } = await listDocuments(db, user.id);
   return (
     <>
       <Header users={users} currentId={user.id} />
