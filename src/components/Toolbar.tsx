@@ -13,7 +13,7 @@ function Btn(props: { label: string; active: boolean; onClick: () => void; child
       // mousedown preventDefault keeps editor focus/selection when clicking the toolbar
       onMouseDown={(e) => e.preventDefault()}
       onClick={props.onClick}
-      className={`min-w-8 rounded px-2 py-1 text-sm ${
+      className={`min-h-9 min-w-9 rounded px-2 py-1 text-sm ${
         props.active ? "bg-blue-100 text-blue-800" : "hover:bg-gray-100"
       }`}
     >

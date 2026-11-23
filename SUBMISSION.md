@@ -16,7 +16,7 @@ Note: on the live free host, documents you create are lost when the instance sle
 
 | Path | Contents |
 |---|---|
-| `src/`, `tests/`, `scripts/`, `public/`, config files | Source code, 44 unit tests, HTTP smoke script, fixtures |
+| `src/`, `tests/`, `scripts/`, `public/`, config files | Source code, 61 unit tests, HTTP smoke script, fixtures |
 | `Dockerfile`, `.dockerignore`, `render.yaml` | Container and free-host deployment config |
 | `README.md` | Local setup/run/test instructions, demo script, API summary, limitations |
 | `docs/ARCHITECTURE.md` | Architecture and tradeoffs note |
@@ -32,7 +32,7 @@ Note: on the live free host, documents you create are lost when the instance sle
 
 Create, rename, edit (bold, italic, underline, H1-H3, bullet and numbered lists), autosave, save and reopen; import of
 .txt/.md/.docx into a new document; owner-only sharing with view/edit permission and clear owned vs shared lists;
-persistence of content and sharing in Postgres (free Neon database in production, embedded PGlite locally); validation and error handling; 44 passing unit tests and a 54-check HTTP
+persistence of content and sharing in Postgres (free Neon database in production, embedded PGlite locally); validation and error handling; 61 passing unit tests and a 54-check HTTP
 smoke script; production build and health check.
 
 ## What is incomplete

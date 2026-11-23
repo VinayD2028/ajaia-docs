@@ -39,7 +39,7 @@ npm run dev          # http://localhost:3000 ; creates ./data/pgdata and seeds d
 
 | Command | What it does |
 |---|---|
-| `npm test` | 44 unit tests (Vitest, real Postgres via embedded PGlite; set `TEST_DATABASE_URL` to run them against a server) |
+| `npm test` | 61 unit tests (Vitest, real Postgres via embedded PGlite; set `TEST_DATABASE_URL` to run them against a server) |
 | `npm run test:smoke` | HTTP smoke script (needs a running server; `BASE=http://localhost:3000` by default) |
 | `npm run lint` | ESLint |
 | `npm run build && npm start` | Production build and server |
@@ -52,7 +52,7 @@ Environment variables: `DATABASE_URL` (a `postgres://` URL; required in producti
 
 - **Editing:** TipTap editor with bold, italic, underline, H1-H3, bulleted and numbered lists; inline title rename;
   autosave 800 ms after typing (status shows Saving / Saved / Save failed).
-- **Import:** `.txt`, `.md`, `.docx` (max 2 MB) become a new document. Supported types are also shown in the UI.
+- **Import:** `.txt`, `.md`, `.docx` (max 2 MB, UTF-8 text, up to 20,000 paragraphs) become a new document. Supported types are also shown in the UI.
   Conversion goes through the editor's schema, so unsupported markup (for example raw HTML or scripts) is dropped.
 - **Sharing:** the owner can share by email with *view* or *edit* permission, change it, or remove access.
   Dashboard separates **My documents** (with "Shared with N") from **Shared with me** (with Can view / Can edit).
@@ -97,7 +97,7 @@ docs/               ARCHITECTURE.md, AI_WORKFLOW.md, VIDEO_OUTLINE.md, screensho
 
 ## Known limitations
 
-- Mock auth (see above); last write wins if two people edit the same document at once (no merge, no live cursors).
+- Mock auth (see above); if two people edit the same document at once, the second saver gets a "changed elsewhere, reload" message (version check, no merge, no live cursors).
 - Free-host data resets as described at the top; no password reset, no real accounts, no document deletion UI.
 - Import keeps headings, bold/italic/underline and lists; tables and images in `.docx` are not preserved.
 - Route handlers are covered by the smoke script, not by unit tests (they need the Next.js runtime).

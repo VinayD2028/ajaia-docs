@@ -65,3 +65,28 @@ describe("documents", () => {
     expect((await getDocument(db, "d_sample"))!.title).toBe("Edited by a reviewer");
   });
 });
+
+describe("optimistic versioning (QA-002/QA-005)", () => {
+  it("starts at version 1 and bumps on each content save", async () => {
+    const db = await freshDb();
+    const id = await newDoc(db, ALICE, "V");
+    expect((await getDocument(db, id))!.version).toBe(1);
+    expect(await saveContent(db, id, '{"type":"doc"}', 1)).toBe(2);
+    expect(await saveContent(db, id, '{"type":"doc"}')).toBe(3); // no base: unconditional
+  });
+
+  it("rejects a save based on a stale version and leaves content untouched", async () => {
+    const db = await freshDb();
+    const id = await newDoc(db, ALICE, "V");
+    await saveContent(db, id, '{"type":"doc","v":"first"}', 1);
+    expect(await saveContent(db, id, '{"type":"doc","v":"stale"}', 1)).toBeNull();
+    expect((await getDocument(db, id))!.content_json).toContain("first");
+  });
+
+  it("renaming does not change the version", async () => {
+    const db = await freshDb();
+    const id = await newDoc(db, ALICE, "V");
+    await renameDocument(db, id, "New");
+    expect((await getDocument(db, id))!.version).toBe(1);
+  });
+});

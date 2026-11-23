@@ -19,7 +19,7 @@ followed by the next, so a mistake could not hide under later work.
 
 - Producing the full vertical slice (schema, API, editor UI, share dialog, importer) in roughly the first 30 minutes of
   the 240-minute window, leaving most of the budget for verification, deployment and documentation.
-- Writing the breadth of test cases (44 unit tests and a 54-check HTTP script) and driving real-browser flows for two
+- Writing the breadth of test cases (61 unit tests and a 54-check HTTP script) and driving real-browser flows for two
   users, which would have been slow to do by hand.
 
 ## What AI-generated output I changed or rejected (real examples)

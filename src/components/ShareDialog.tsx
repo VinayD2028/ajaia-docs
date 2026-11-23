@@ -17,6 +17,9 @@ export default function ShareDialog({ docId, suggestions, onClose }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openedAt = useRef(0);
+  const downOnBackdrop = useRef(false);
   const base = `/api/documents/${docId}/shares`;
 
   const call = useCallback(async (url: string, init?: RequestInit) => {
@@ -27,6 +30,13 @@ export default function ShareDialog({ docId, suggestions, onClose }: Props) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
     return data as { shares: ShareRow[] };
+  }, []);
+
+  // Remember what had focus (the Share button) and give it back on close.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    openedAt.current = Date.now();
+    return () => opener?.focus?.();
   }, []);
 
   useEffect(() => {
@@ -40,14 +50,35 @@ export default function ShareDialog({ docId, suggestions, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [base, call, onClose]);
 
-  async function run(fn: () => Promise<{ shares: ShareRow[] }>, success?: string) {
+  async function run(fn: () => Promise<{ shares: ShareRow[] }>, success?: string): Promise<boolean> {
     setError(null);
     setNotice(null);
     try {
       setShares((await fn()).shares);
       if (success) setNotice(success);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
+      return false;
+    }
+  }
+
+  // Keep Tab / Shift+Tab inside the modal.
+  function trapTab(e: React.KeyboardEvent) {
+    if (e.key !== "Tab" || !dialogRef.current) return;
+    const items = Array.from(
+      dialogRef.current.querySelectorAll<HTMLElement>("button, input, select, [href], [tabindex]:not([tabindex='-1'])")
+    ).filter((el) => !(el as HTMLButtonElement).disabled);
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !dialogRef.current.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (active === last || !dialogRef.current.contains(active))) {
+      e.preventDefault();
+      first.focus();
     }
   }
 
@@ -56,15 +87,24 @@ export default function ShareDialog({ docId, suggestions, onClose }: Props) {
     void run(
       () => call(base, { method: "POST", body: JSON.stringify({ email, permission }) }),
       `Shared with ${email.trim()}`
-    ).then(() => setEmail(""));
+    ).then((ok) => ok && setEmail("")); // keep the typed address on failure so it can be corrected
   }
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={(e) => {
+        downOnBackdrop.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        // Close only on a deliberate click that started AND ended on the backdrop. Ignore the first
+        // moments, so the second click of a double-click on "Share" doesn't dismiss the dialog.
+        if (e.target === e.currentTarget && downOnBackdrop.current && Date.now() - openedAt.current > 500) onClose();
+        downOnBackdrop.current = false;
+      }}
+      onKeyDown={trapTab}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="share-title" className="w-full max-w-md rounded bg-white p-5 shadow-xl">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="share-title" className="w-full max-w-md rounded bg-white p-5 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 id="share-title" className="text-lg font-semibold">Share document</h2>
           <button onClick={onClose} aria-label="Close" className="rounded px-2 text-xl leading-none hover:bg-gray-100">×</button>

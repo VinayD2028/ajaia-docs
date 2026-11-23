@@ -34,6 +34,7 @@ export async function removeShare(db: Db, docId: string, userId: string): Promis
 }
 
 export async function findUserByEmail(db: Db, email: string): Promise<User | undefined> {
+  if (email.includes("\u0000")) return undefined;
   const [u] = await db.query<User>(
     "SELECT id, name, email FROM users WHERE lower(email) = lower($1)",
     [email.trim()]
@@ -46,6 +47,7 @@ export function listUsers(db: Db): Promise<User[]> {
 }
 
 export async function findUserById(db: Db, id: string): Promise<User | undefined> {
+  if (id.includes("\u0000")) return undefined;
   const [u] = await db.query<User>("SELECT id, name, email FROM users WHERE id = $1", [id]);
   return u;
 }

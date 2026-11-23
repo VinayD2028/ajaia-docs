@@ -61,4 +61,30 @@ describe("importFile", () => {
     await expect(p).rejects.toBeInstanceOf(ValidationError);
     await expect(p).rejects.toThrow(msg);
   });
+
+  it("rejects files with too many paragraphs quickly instead of hanging (QA-001)", async () => {
+    const lines = Buffer.from("a\n\n".repeat(25_000));
+    const t0 = Date.now();
+    await expect(importFile("many.txt", lines)).rejects.toThrow(/too many/);
+    expect(Date.now() - t0).toBeLessThan(2000);
+  });
+
+  it("accepts a large-but-reasonable file just under the element cap", async () => {
+    const t0 = Date.now();
+    const { content } = await importFile("big.txt", Buffer.from("a\n\n".repeat(15_000)));
+    expect((content as N).content!.length).toBe(15_000);
+    expect(Date.now() - t0).toBeLessThan(15_000);
+  });
+
+  it("rejects binary and UTF-16 files named .txt instead of mangling them (QA-009)", async () => {
+    await expect(importFile("bin.txt", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]))).rejects.toThrow(/UTF-8/);
+    await expect(importFile("u16.txt", Buffer.from("\ufeffhello", "utf16le"))).rejects.toThrow(/UTF-8/);
+    await expect(importFile("latin1.txt", Buffer.from("caf\xe9 au lait", "latin1"))).rejects.toThrow(/UTF-8/);
+  });
+
+  it("accepts UTF-8 with a BOM and strips it", async () => {
+    const { content } = await importFile("bom.txt", Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("héllo")]));
+    expect(JSON.stringify(content)).toContain("héllo");
+    expect(JSON.stringify(content)).not.toContain("\ufeff");
+  });
 });

@@ -29,14 +29,14 @@ export default function UserSwitcher({ users, currentId, compact }: Props) {
 
   return (
     <div className={compact ? "flex items-center gap-2" : "flex flex-col gap-2"}>
-      <label htmlFor="user-switcher" className="text-sm font-medium">
+      <label htmlFor="user-switcher" className={`text-sm font-medium ${compact ? "hidden sm:inline" : ""}`}>
         Signed in as
       </label>
       <select
         id="user-switcher"
         value={currentId ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-gray-300 bg-white px-3 py-2 text-black"
+        className="min-w-0 max-w-[55vw] rounded border border-gray-300 bg-white px-3 py-2 text-black"
       >
         <option value="" disabled>
           Select a user…

@@ -423,6 +423,13 @@ No pre-written prompt: driven interactively by the user's decisions. Instruction
 
 ---
 
+
+### [#12] [QA + hardening] [14:28-14:52 ET, ~1h45m-2h07m elapsed]
+- **Prompt (summary):** Run five adversarial QA trials (first-time user, hostile input, access control, file upload, chaos/concurrency), report confirmed vs suspected bugs without fixing; then "fix in the order you mentioned".
+- **AI output:** Playwright/HTTP scripts (~300 checks), a severity-ranked report (10 findings), then fixes: import caps, content schema validation, NUL guards, version-checked saves with 409, editor refetch on Back/Forward, offline retry, share-dialog accessibility, mobile layout.
+- **What I verified / what was wrong:** The first full run of my own scripts had harness mistakes (broken pipe, wrong history setup) that I corrected before counting anything; the Back/Forward root cause is still a likely, not proven, explanation. After the fixes: 61 unit tests, 54-check smoke script and 67 access-control checks pass, and the repro scripts for QA-001..010 pass against a rebuilt production build.
+- **Open:** Not re-run against the live Render/Neon site; the new `version` column is added on startup via `ALTER TABLE ... IF NOT EXISTS`.
+
 ## Summary of AI Usage
 
 - **Tools:** Claude (Sonnet 5.5) acted as prompt engineer, coding agent and process logger; headless Chrome (Playwright), Vitest, a bash smoke script, Claude in Chrome for GitHub, Render and Neon dashboards.

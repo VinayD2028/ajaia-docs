@@ -51,7 +51,7 @@ Save failed. A failed save stays dirty and retries on the next change; pending e
 
 ## Testing strategy
 
-- **Unit (44 tests):** access, shares, documents, validation and import, using real Postgres (PGlite in memory; also run against a real server) rather than
+- **Unit (61 tests):** access, shares, documents, validation and import, using real Postgres (PGlite in memory; also run against a real server) rather than
   mocks. I checked the tests can fail by temporarily breaking three behaviors and confirming they were caught.
 - **HTTP smoke script (54 checks):** status codes, cookies, sharing and import end to end against a running server.
   Route handlers need the Next.js runtime (`cookies()`), so I chose this over mocking `next/headers`.
@@ -74,10 +74,22 @@ restore window and no real backups, so a long-lived deployment would still need 
 | Cut | Why | Cost |
 |---|---|---|
 | Mock auth (seeded users, unsigned `uid` cookie) | Brief allows it; keeps focus on sharing logic | Anyone can impersonate anyone |
-| Last-write-wins saves | Real-time/OT/CRDT is out of a 4-hour scope | Concurrent editors can overwrite each other |
+| Optimistic version check on save (no merge) | Real-time/OT/CRDT is out of a 4-hour scope | A second editor gets a "changed elsewhere, reload" message and must copy their edit by hand; no live cursors or auto-merge |
 | Whole-doc autosave | Simple and reliable | Larger payloads on long docs |
 | docx import: text, headings, bold/italic/underline, lists only | Covers the common case | Tables/images dropped |
 | Free Neon Postgres | No paid dependency, no expiry | Compute sleeps when idle; no real backups on the free plan |
+
+## Concurrency and data-safety rules (added after QA)
+
+- `documents.version` increments on every content save. The editor sends `baseVersion`; the server applies the
+  update only if it still matches (`UPDATE ... WHERE version = $n`), otherwise returns **409**. The editor then
+  stops autosaving and shows a reload banner instead of silently overwriting.
+- The editor re-reads the document on mount, on `pageshow` (browser Back/Forward) and when the tab becomes visible,
+  and applies it if the user has no unsaved edits. This fixed a stale-page bug that blanked the editor.
+- One save is in flight at a time; failed saves retry every 3 s (network/5xx) and on the browser `online` event.
+- Content is validated against the real TipTap schema (unknown nodes/marks rejected), depth-limited (40), link
+  protocols limited to http(s)/mailto/tel, and NUL characters are rejected in titles, emails and ids.
+- Imports are capped at 20,000 paragraphs/elements and must be valid UTF-8 text (binary/UTF-16 rejected).
 
 ## Security notes
 
@@ -88,7 +100,7 @@ schema. Not implemented: CSRF tokens, rate limiting, audit logs, signed sessions
 
 ## What I would build next (2-4 hours)
 
-1. Real auth (email magic link or OAuth) with signed sessions; 2. durable hosted database; 3. optimistic
-concurrency (version number on save, conflict message) and presence indicators; 4. export to Markdown/PDF;
+1. Real auth (email magic link or OAuth) with signed sessions; 2. durable hosted database; 3. real-time sync/merge
+(Yjs or similar) and presence indicators; 4. export to Markdown/PDF;
 5. version history using the existing `updated_at` + a `document_versions` table; 6. committed Playwright tests for
 the browser flows.

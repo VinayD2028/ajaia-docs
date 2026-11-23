@@ -26,6 +26,7 @@ export default async function DocPage({ params }: { params: Promise<{ id: string
         docId={doc.id}
         initialTitle={doc.title}
         initialContent={JSON.parse(doc.content_json)}
+        initialVersion={doc.version}
         access={access}
         ownerName={doc.owner_name}
         shareSuggestions={users.filter((u) => u.id !== user.id).map((u) => u.email)}

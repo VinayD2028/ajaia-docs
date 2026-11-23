@@ -18,6 +18,7 @@ export interface DocRecord {
   content_json: string;
   created_at: string;
   updated_at: string;
+  version: number;
 }
 
 export const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
@@ -57,7 +58,7 @@ export async function createDocument(
 
 export async function getDocument(db: Db, id: string): Promise<DocRecord | undefined> {
   const [row] = await db.query<DocRecord>(
-    `SELECT d.id, d.owner_id, d.title, d.content_json, d.created_at, d.updated_at, u.name AS owner_name
+    `SELECT d.id, d.owner_id, d.title, d.content_json, d.created_at, d.updated_at, d.version, u.name AS owner_name
      FROM documents d JOIN users u ON u.id = d.owner_id WHERE d.id = $1`,
     [id]
   );
@@ -68,8 +69,22 @@ export async function renameDocument(db: Db, id: string, title: string) {
   await db.query(`UPDATE documents SET title = $1, updated_at = ${SQL_NOW} WHERE id = $2`, [title, id]);
 }
 
-export async function saveContent(db: Db, id: string, contentJson: string) {
-  await db.query(`UPDATE documents SET content_json = $1, updated_at = ${SQL_NOW} WHERE id = $2`, [contentJson, id]);
+/**
+ * Saves content and bumps the version. With `baseVersion`, the write only happens if the document
+ * is still at that version (optimistic concurrency); returns null on a conflict.
+ */
+export async function saveContent(
+  db: Db,
+  id: string,
+  contentJson: string,
+  baseVersion?: number
+): Promise<number | null> {
+  const rows = await db.query<{ version: number }>(
+    `UPDATE documents SET content_json = $1, version = version + 1, updated_at = ${SQL_NOW}
+     WHERE id = $2 AND ($3::int IS NULL OR version = $3::int) RETURNING version`,
+    [contentJson, id, baseVersion ?? null]
+  );
+  return rows[0]?.version ?? null;
 }
 
 export async function deleteDocument(db: Db, id: string) {
