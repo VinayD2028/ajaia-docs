@@ -404,6 +404,25 @@ ACCEPTANCE CRITERIA
 
 ---
 
+### [#11] [P9 Persistence] [~14:00-14:30 / ~75-105 min elapsed]
+**Goal:** Push the Postgres port live, then move the database off Render's free Postgres (deleted after 30 days) to Neon's free tier.
+**Prompt:**
+````text
+No pre-written prompt: driven interactively by the user's decisions. Instructions in effect:
+- "Push the postgres update first and then add neon."
+- The user (not Claude) creates the Neon account/project and pastes the connection string into Render's `DATABASE_URL`; Claude never sees the secret.
+- Verify on the live site, and ask before account-changing actions.
+````
+**Result:** Live site now uses a Neon Postgres database. `/api/health` OK; a document created on the live site survived a service restart (checked twice: once on Render's database, once on Neon). Neon's console showed the project's compute active right after my requests.
+**Issues / Verification:**
+- Push: my sandbox's GitHub token was invalid and Chrome upload of files from the connected folder was refused, so the user drag-and-dropped the 33 changed files; I deleted `.npmrc` through GitHub's editor. The repo then matched my local tree except a comment-only `.gitignore` change (hidden files can't be uploaded).
+- The Blueprint auto-synced and created the Render database. The first deploy after the upload FAILED: the instance ran out of its 512 MB memory, because that build had no `DATABASE_URL` yet and fell back to the embedded database. The next deploy (with the database wired in) succeeded. Fix: production now refuses to start without `DATABASE_URL` unless `ALLOW_EMBEDDED_DB=true`; verified locally (503 with a clear log message without the flag, smoke 54/54 with it).
+- Not verified: that the live data is in Neon rather than Render's database was inferred from the Neon console's recent compute activity, not from reading rows. The Render database `ajaia-db` still existed at this point and must be removed by the user once `render.yaml` is synced.
+**Iteration:** `render.yaml` no longer declares a database; `DATABASE_URL` is `sync: false` (set by hand), `DATABASE_SSL=true`. Docs updated to say Neon and to state that the free plan has no real backups.
+**Decision / Tradeoff:** Neon free (no expiry, no card) over Render free Postgres (30-day expiry) or a SQLite mirror (it would live on the same ephemeral disk). Cost: an extra account and a secret kept outside git; Neon compute sleeps when idle, and the free plan has only a short restore window.
+
+---
+
 ## Summary of AI Usage (DRAFT, to be finalized at the end)
 
 - **Decomposition:** seven small, single-layer prompts in dependency order (scaffold -> API -> editor UI -> sharing -> import -> tests -> deploy readiness), each with explicit acceptance criteria that I then verified by running code, not by reading it.

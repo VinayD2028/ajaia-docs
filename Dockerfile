@@ -18,8 +18,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
     PGLITE_DIR=/app/data/pgdata
-# Production sets DATABASE_URL (managed Postgres). Without it the app falls back to embedded
-# Postgres (PGlite) in PGLITE_DIR: mount a volume at /app/data to persist it.
+# Production sets DATABASE_URL (managed Postgres). The embedded Postgres (PGlite, stored in
+# PGLITE_DIR; mount a volume at /app/data) needs an explicit -e ALLOW_EMBEDDED_DB=true.
 # non-root user + writable data dir
 RUN mkdir -p /app/data && chown -R node:node /app
 COPY --from=build --chown=node:node /app/.next/standalone ./

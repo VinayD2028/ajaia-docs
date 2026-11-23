@@ -34,7 +34,9 @@ followed by the next, so a mistake could not hide under later work.
   slim image). Found by reproducing a clean build; fixed with `--ignore-scripts`. (Later made moot by moving to Postgres.)
 - **Persistence rework:** the live site lost data on sleep/redeploy (ephemeral disk, a known tradeoff I had accepted).
   Ported the data layer to async Postgres (`pg` in production, PGlite locally/tests) and verified it against a real
-  Postgres server, not just PGlite. My ported test had a real bug (awaiting a property of a Promise) that the test run caught.
+  Postgres server, not just PGlite. Render's free Postgres expires after 30 days, so the live site now uses a free Neon database;
+  the app only needed a different `DATABASE_URL`. On the live host the embedded fallback ran the 512 MB free instance out of
+  memory during one deploy, so production now refuses to start without `DATABASE_URL`. My ported test had a real bug (awaiting a property of a Promise) that the test run caught.
 - **Fixed a test-tool side effect:** my smoke script mutated the seeded demo document; added a restore step.
 - **Corrected my own wrong assumption:** a prompt claimed the `Secure` cookie would not persist on `http://localhost`;
   real Chrome showed it does, so the README states the narrower, tested claim.

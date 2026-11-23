@@ -105,6 +105,17 @@ const g = globalThis as unknown as { __db?: Promise<Db> };
 
 export function getDb(): Promise<Db> {
   if (!g.__db) {
+    // The embedded database is for dev/tests. On a small production host it can exhaust memory
+    // (it did on Render's 512 MB free tier), so require an explicit opt-in there.
+    if (
+      process.env.NODE_ENV === "production" &&
+      !process.env.DATABASE_URL &&
+      process.env.ALLOW_EMBEDDED_DB !== "true"
+    ) {
+      return Promise.reject(
+        new Error("DATABASE_URL is not set (set ALLOW_EMBEDDED_DB=true to use the embedded database)")
+      );
+    }
     const target = process.env.DATABASE_URL ?? process.env.PGLITE_DIR ?? "./data/pgdata";
     const p = openDatabase(target);
     g.__db = p;

@@ -4,9 +4,9 @@ A lightweight collaborative document editor (Google Docs-inspired): create, rena
 documents, import files, and share documents between users. Built for the Ajaia full-stack assignment.
 
 - **Live app:** https://ajaia-docs-eu0h.onrender.com
-- **Hosting caveat:** data lives in a Render free Postgres database, so documents survive sleep and redeploys.
-  Render deletes free databases 30 days after creation (14-day grace period), so the live demo's data is
-  durable but not permanent. The first request after sleep (~15 min idle) can take about a minute.
+- **Hosting note:** the web app runs on Render's free plan and stores data in a free Neon Postgres database, so
+  documents survive sleep, restarts and redeploys. The first request after sleep (~15 min idle) can take about a
+  minute, and Neon's compute also wakes from idle on first use.
 
 ## Test accounts (no passwords)
 
@@ -46,7 +46,7 @@ npm run dev          # http://localhost:3000 ; creates ./data/pgdata and seeds d
 
 To reset all data, stop the server and delete the `data/` directory.
 
-Environment variables: `DATABASE_URL` (a `postgres://` URL; used in production), `DATABASE_SSL=true` (if the server needs TLS), `PGLITE_DIR` (embedded database directory when `DATABASE_URL` is unset; default `./data/pgdata`), `PORT` (default 3000).
+Environment variables: `DATABASE_URL` (a `postgres://` URL; required in production), `DATABASE_SSL=true` (if the server needs TLS, as Neon does), `ALLOW_EMBEDDED_DB=true` (production only: allow the embedded database), `PGLITE_DIR` (embedded database directory when `DATABASE_URL` is unset; default `./data/pgdata`), `PORT` (default 3000).
 
 ## Features
 
@@ -64,7 +64,7 @@ Environment variables: `DATABASE_URL` (a `postgres://` URL; used in production),
 
 ```bash
 docker build -t ajaia-docs .
-docker run -p 3000:3000 -v ajaia-data:/app/data ajaia-docs     # volume keeps the embedded Postgres data
+docker run -p 3000:3000 -v ajaia-data:/app/data -e ALLOW_EMBEDDED_DB=true ajaia-docs     # volume keeps the embedded Postgres data
 # or: -e DATABASE_URL=postgres://user:pass@host:5432/db  to use an external Postgres
 ```
 

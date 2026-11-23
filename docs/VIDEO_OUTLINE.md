@@ -12,4 +12,4 @@ Run on the live URL if it is awake (open it a minute early); otherwise run local
 | 3:30-4:00 | `AI_PROCESS_LOG.md` and `AI_WORKFLOW.md` | How AI helped; real bugs it caused and I caught (docx underline, node-gyp deploy failure); what I cut and why |
 
 Deprioritized (say it explicitly): real auth, real-time collaboration, durable DB on the free host, rich docx import.
-Key decisions: Postgres (managed in prod, PGlite locally) + Docker, schema-based import, 404 on no access, whole-document autosave.
+Key decisions: Postgres (Neon in prod, PGlite locally) + Docker, schema-based import, 404 on no access, whole-document autosave.

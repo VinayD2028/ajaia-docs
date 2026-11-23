@@ -61,11 +61,13 @@ Save failed. A failed save stays dirty and retries on the next change; pending e
 ## Deployment
 
 Multi-stage Dockerfile (Node 22, non-root, `output: 'standalone'`, `/api/health` healthcheck) deployed to Render's free
-plan via `render.yaml`. **Persistence:** the free web plan has no persistent disk, so the app stores data in a Render free Postgres
-database declared in the same Blueprint (`DATABASE_URL` injected via `fromDatabase`, no secrets to paste). Data
-survives sleep and redeploys. Limitation: Render expires free databases 30 days after creation (14-day grace), so the
-live demo is durable for a month, not forever. The first version used SQLite on the ephemeral disk; I moved to
-Postgres once the live site showed the data loss, using the same dialect locally via PGlite so tests exercise real SQL.
+plan via `render.yaml`. **Persistence:** the free web plan has no persistent disk, so the app stores data in a free Neon Postgres database
+(`DATABASE_URL` is set by hand in the Render dashboard, so no secret lives in git). Data survives sleep, restarts and
+redeploys; I checked this on the live site with a restart. The history: the first version used SQLite on the ephemeral
+disk and lost data; I then moved to Render's free Postgres, but Render deletes free databases 30 days after creation,
+so I switched to Neon, whose free plan has no expiry. The code did not change for that: it only needs a `postgres://` URL.
+Locally the same dialect runs via embedded PGlite, so tests exercise real SQL. Neon's free plan keeps only a short
+restore window and no real backups, so a long-lived deployment would still need its own backup routine.
 
 ## Tradeoffs and deliberate scope cuts
 
@@ -75,7 +77,7 @@ Postgres once the live site showed the data loss, using the same dialect locally
 | Last-write-wins saves | Real-time/OT/CRDT is out of a 4-hour scope | Concurrent editors can overwrite each other |
 | Whole-doc autosave | Simple and reliable | Larger payloads on long docs |
 | docx import: text, headings, bold/italic/underline, lists only | Covers the common case | Tables/images dropped |
-| Free Postgres on Render | No paid dependency, no secrets | Free database expires after 30 days |
+| Free Neon Postgres | No paid dependency, no expiry | Compute sleeps when idle; no real backups on the free plan |
 
 ## Security notes
 

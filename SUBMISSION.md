@@ -32,14 +32,14 @@ Note: on the live free host, documents you create are lost when the instance sle
 
 Create, rename, edit (bold, italic, underline, H1-H3, bullet and numbered lists), autosave, save and reopen; import of
 .txt/.md/.docx into a new document; owner-only sharing with view/edit permission and clear owned vs shared lists;
-persistence of content and sharing in Postgres (Render free database in production, embedded PGlite locally); validation and error handling; 44 passing unit tests and a 54-check HTTP
+persistence of content and sharing in Postgres (free Neon database in production, embedded PGlite locally); validation and error handling; 44 passing unit tests and a 54-check HTTP
 smoke script; production build and health check.
 
 ## What is incomplete
 
 - Authentication is mocked (seeded users, unsigned cookie).
 - Last write wins on concurrent edits; no real-time collaboration or presence.
-- Live-site database is Render's free Postgres, which Render deletes 30 days after creation (14-day grace); data survives sleeps and redeploys until then.
+- Live-site database is Neon's free tier: data survives sleeps, restarts and redeploys, but the free plan has no real backups.
 - `.docx` import drops tables and images; no document delete or export UI.
 
 ## What I would build next with another 2-4 hours
