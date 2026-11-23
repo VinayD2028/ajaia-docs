@@ -430,6 +430,13 @@ No pre-written prompt: driven interactively by the user's decisions. Instruction
 - **What I verified / what was wrong:** The first full run of my own scripts had harness mistakes (broken pipe, wrong history setup) that I corrected before counting anything; the Back/Forward root cause is still a likely, not proven, explanation. After the fixes: 61 unit tests, 54-check smoke script and 67 access-control checks pass, and the repro scripts for QA-001..010 pass against a rebuilt production build.
 - **Open:** Not re-run against the live Render/Neon site; the new `version` column is added on startup via `ALTER TABLE ... IF NOT EXISTS`.
 
+
+### [#13] [Auth] [14:56-15:25 ET, ~2h10m-2h40m elapsed]
+- **Prompt (summary):** "tackle the sign-in issue: basic sign-in page; when logged in as one user they cannot access other users unless they sign out."
+- **AI output:** Email + password sign-in (scrypt hashes, shared demo password for the three seeded users), HMAC-signed expiring session cookie replacing the bare `uid`, login/logout routes, 5-failure throttle, sign-in form and Sign out button replacing the user switcher, `/api/users` now requires sign-in; tests and smoke script updated.
+- **What I verified / what was wrong:** 69 unit tests, 58-check smoke script, 67 access-control checks and 43 auth/UI checks pass on a rebuilt build. My first browser run failed because an old server was still bound to the port (stale build) and then because my own API test had throttled Carol; both were harness mistakes, fixed in the scripts, not the app.
+- **Open:** Not run against the live site yet. The shared demo password is public in the README by design (reviewers need it). Throttle is per instance and in memory.
+
 ## Summary of AI Usage
 
 - **Tools:** Claude (Sonnet 5.5) acted as prompt engineer, coding agent and process logger; headless Chrome (Playwright), Vitest, a bash smoke script, Claude in Chrome for GitHub, Render and Neon dashboards.

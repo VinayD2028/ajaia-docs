@@ -1,4 +1,9 @@
 import type { Db } from "./db";
+import { hashPassword } from "./password";
+
+/** Shared demo password for the three seeded accounts (override with DEMO_PASSWORD). */
+export const DEFAULT_DEMO_PASSWORD = "ajaia-demo";
+let demoHash: Promise<string> | undefined;
 
 const USERS = [
   { id: "u_alice", name: "Alice", email: "alice@example.com" },
@@ -31,6 +36,9 @@ export async function seed(db: Db): Promise<void> {
       [u.id, u.name, u.email]
     );
   }
+  // Only fills in missing hashes, so a changed password is never overwritten on restart.
+  demoHash ??= hashPassword(process.env.DEMO_PASSWORD || DEFAULT_DEMO_PASSWORD);
+  await db.query("UPDATE users SET password_hash = $1 WHERE password_hash IS NULL", [await demoHash]);
   await db.query(
     "INSERT INTO documents (id, owner_id, title, content_json) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
     ["d_sample", "u_alice", "Welcome to Ajaia Docs", JSON.stringify(SAMPLE_CONTENT)]

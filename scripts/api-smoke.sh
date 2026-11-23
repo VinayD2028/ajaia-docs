@@ -5,15 +5,28 @@
 # Usage: BASE=http://localhost:3000 ./scripts/api-smoke.sh
 BASE=${BASE:-http://localhost:3000}
 fail=0
+# Sign in once per user (demo password) and reuse the signed session cookie.
+PW=${DEMO_PASSWORD:-ajaia-demo}
+declare -A COOKIE
+login() { # user id -> cookie value
+  local id=$1; [ -n "${COOKIE[$id]}" ] && return
+  local email="${id#u_}@example.com"
+  COOKIE[$id]=$(curl -s -D - -o /dev/null -X POST "$BASE/api/auth/login" -H 'content-type: application/json' \
+    -d "{\"email\":\"$email\",\"password\":\"$PW\"}" | tr -d '\r' | sed -n 's/^set-cookie: uid=\([^;]*\).*/\1/Ip' | head -1)
+}
 req() { # name expected method path user [body]
   local name=$1 want=$2 method=$3 path=$4 user=$5 body=$6
   local args=(-s -o /tmp/smoke.out -w '%{http_code}' -X "$method" "$BASE$path")
-  [ -n "$user" ] && args+=(-b "uid=$user")
+  if [ -n "$user" ]; then login "$user"; args+=(-b "uid=${COOKIE[$user]}"); fi
   [ -n "$body" ] && args+=(-H 'content-type: application/json' -d "$body")
   local got; got=$(curl "${args[@]}")
   if [ "$got" = "$want" ]; then echo "PASS $name ($got)"; else echo "FAIL $name: want $want got $got: $(cat /tmp/smoke.out)"; fail=1; fi
 }
 req "no cookie -> 401"            401 GET  /api/documents ""
+req "wrong password -> 401"       401 POST /api/auth/login "" '{"email":"alice@example.com","password":"nope"}'
+req "unknown email -> 401"        401 POST /api/auth/login "" '{"email":"zed@example.com","password":"x"}'
+curl -s -o /dev/null -w '%{http_code}' -b 'uid=u_alice' "$BASE/api/documents" | grep -q 401 && echo "PASS unsigned uid=u_alice rejected" || { echo "FAIL unsigned cookie accepted"; fail=1; }
+req "users list needs sign-in"    401 GET  /api/users ""
 req "alice creates"               201 POST /api/documents u_alice '{"title":"Smoke doc"}'
 ID=$(sed -E 's/.*"id":"([^"]+)".*/\1/' /tmp/smoke.out)
 req "carol cannot see (404)"      404 GET  /api/documents/$ID u_carol
@@ -65,7 +78,7 @@ req "remove again -> 404"            404 DELETE /api/documents/$ID/shares/u_bob 
 FIX="$(dirname "$0")/../tests/fixtures"
 impreq() { # name want file user [filename]
   local args=(-s -o /tmp/smoke.out -w '%{http_code}' -F "file=@$3${5:+;filename=$5}" "$BASE/api/documents/import")
-  [ -n "$4" ] && args+=(-b "uid=$4")
+  if [ -n "$4" ]; then login "$4"; args+=(-b "uid=${COOKIE[$4]}"); fi
   local got; got=$(curl "${args[@]}")
   if [ "$got" = "$2" ]; then echo "PASS $1 ($got)"; else echo "FAIL $1: want $2 got $got: $(cat /tmp/smoke.out)"; fail=1; fi
 }

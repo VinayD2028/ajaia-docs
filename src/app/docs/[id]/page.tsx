@@ -21,7 +21,7 @@ export default async function DocPage({ params }: { params: Promise<{ id: string
 
   return (
     <>
-      <Header users={users} currentId={user.id} showBack />
+      <Header userName={user.name} userEmail={user.email} showBack />
       <Editor
         docId={doc.id}
         initialTitle={doc.title}

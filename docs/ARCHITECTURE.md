@@ -51,9 +51,9 @@ Save failed. A failed save stays dirty and retries on the next change; pending e
 
 ## Testing strategy
 
-- **Unit (61 tests):** access, shares, documents, validation and import, using real Postgres (PGlite in memory; also run against a real server) rather than
+- **Unit (69 tests):** access, shares, documents, validation and import, using real Postgres (PGlite in memory; also run against a real server) rather than
   mocks. I checked the tests can fail by temporarily breaking three behaviors and confirming they were caught.
-- **HTTP smoke script (54 checks):** status codes, cookies, sharing and import end to end against a running server.
+- **HTTP smoke script (58 checks):** status codes, cookies, sharing and import end to end against a running server.
   Route handlers need the Next.js runtime (`cookies()`), so I chose this over mocking `next/headers`.
 - **Browser checks:** headless Chrome flows (create/format/rename/refresh, two-user sharing, import). These were run
   during development and are not committed as automated tests.
@@ -73,7 +73,7 @@ restore window and no real backups, so a long-lived deployment would still need 
 
 | Cut | Why | Cost |
 |---|---|---|
-| Mock auth (seeded users, unsigned `uid` cookie) | Brief allows it; keeps focus on sharing logic | Anyone can impersonate anyone |
+| Basic auth: seeded users, one shared demo password | Brief allows mock auth; this adds real sign-in/out without building account management | No sign-up, reset or MFA; the demo password is public in the README |
 | Optimistic version check on save (no merge) | Real-time/OT/CRDT is out of a 4-hour scope | A second editor gets a "changed elsewhere, reload" message and must copy their edit by hand; no live cursors or auto-merge |
 | Whole-doc autosave | Simple and reliable | Larger payloads on long docs |
 | docx import: text, headings, bold/italic/underline, lists only | Covers the common case | Tables/images dropped |
@@ -93,14 +93,17 @@ restore window and no real backups, so a long-lived deployment would still need 
 
 ## Security notes
 
-This is a demo. The `uid` cookie is an unsigned user id, so **it is not authentication**: do not put real data in it.
-Mitigations that do exist: parameterized queries everywhere, server-side permission checks on every route, input
+This is a demo. Sign-in is email + password (scrypt-hashed, per-user salt) with a **signed, expiring (7 days), httpOnly
+session cookie** (HMAC-SHA256 keyed by `SESSION_SECRET`, or derived from `DATABASE_URL` when unset). One user at a time
+per browser: switching user means signing out. Failed logins are throttled (5 per 10 minutes per email, in memory per
+instance) and unknown emails cost the same as wrong passwords. But all three accounts share a published demo password, so
+do not put real data in it. Other mitigations: parameterized queries everywhere, server-side permission checks on every route, input
 validation with size limits, httpOnly + SameSite=Lax (+ Secure in production) cookie, import goes through the editor
-schema. Not implemented: CSRF tokens, rate limiting, audit logs, signed sessions.
+schema. Not implemented: CSRF tokens (SameSite=Lax only), IP-based rate limiting, audit logs, session revocation on the server, sign-up, password reset.
 
 ## What I would build next (2-4 hours)
 
-1. Real auth (email magic link or OAuth) with signed sessions; 2. durable hosted database; 3. real-time sync/merge
+1. Real accounts (sign-up, per-user passwords or OAuth, server-side session revocation); 2. durable hosted database; 3. real-time sync/merge
 (Yjs or similar) and presence indicators; 4. export to Markdown/PDF;
 5. version history using the existing `updated_at` + a `document_versions` table; 6. committed Playwright tests for
 the browser flows.

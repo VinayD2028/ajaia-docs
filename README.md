@@ -8,22 +8,23 @@ documents, import files, and share documents between users. Built for the Ajaia 
   documents survive sleep, restarts and redeploys. The first request after sleep (~15 min idle) can take about a
   minute, and Neon's compute also wakes from idle on first use.
 
-## Test accounts (no passwords)
+## Test accounts
 
-| User | Email |
-|---|---|
-| Alice | alice@example.com |
-| Bob | bob@example.com |
-| Carol | carol@example.com |
+| User | Email | Password (all three) |
+|---|---|---|
+| Alice | alice@example.com | `ajaia-demo` |
+| Bob | bob@example.com | `ajaia-demo` |
+| Carol | carol@example.com | `ajaia-demo` |
 
-Pick a user from the dropdown (top right). This is **mock auth**, not real authentication: see
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#security-notes).
+Sign in on the first page; use **Sign out** (top right) to switch user. The shared demo password is deliberate so
+reviewers can try all three roles; set `DEMO_PASSWORD` before the first start to change it. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#security-notes) for what this does and does not protect.
 
 ## 2-minute sharing demo
 
 1. Sign in as **Alice**, click **New document**, type something, apply bold/heading/list formatting.
 2. Click **Share**, add `bob@example.com` as **Can view**.
-3. Switch to **Bob** (dropdown): the doc is under **Shared with me** with a *Can view* badge; the editor is read-only.
+3. Sign out, then sign in as **Bob** (`bob@example.com`): the doc is under **Shared with me** with a *Can view* badge; the editor is read-only.
 4. Back as Alice, change Bob to **Can edit**; refresh as Bob and edit. **Carol** gets a 404 for that document.
 5. As Alice, click **Import file** and pick `tests/fixtures/sample.md` or `sample.docx`: it becomes a new editable document.
 
@@ -39,7 +40,7 @@ npm run dev          # http://localhost:3000 ; creates ./data/pgdata and seeds d
 
 | Command | What it does |
 |---|---|
-| `npm test` | 61 unit tests (Vitest, real Postgres via embedded PGlite; set `TEST_DATABASE_URL` to run them against a server) |
+| `npm test` | 69 unit tests (Vitest, real Postgres via embedded PGlite; set `TEST_DATABASE_URL` to run them against a server) |
 | `npm run test:smoke` | HTTP smoke script (needs a running server; `BASE=http://localhost:3000` by default) |
 | `npm run lint` | ESLint |
 | `npm run build && npm start` | Production build and server |
@@ -76,19 +77,20 @@ The Dockerfile is what the live site is built from. In production the login cook
 ```
 src/app/            pages (/, /docs/[id]) and API routes
 src/app/api/        session, users, health, documents, documents/[id], .../shares, documents/import
-src/components/     Dashboard, Editor, Toolbar, ShareDialog, Header, UserSwitcher
+src/components/     Dashboard, Editor, Toolbar, ShareDialog, Header, SignInForm, SignOutButton
 src/lib/            db, seed, auth, access, documents, shares, import, validate, extensions, http
 tests/              unit tests + fixtures (sample.txt / .md / .docx)
 scripts/            api-smoke.sh, make-docx-fixture.py
 docs/               ARCHITECTURE.md, AI_WORKFLOW.md, VIDEO_OUTLINE.md, screenshots/
 ```
 
-## API summary (all JSON; identity comes from the `uid` cookie)
+## API summary (all JSON; identity comes from a signed, httpOnly `uid` session cookie)
 
 | Route | Notes |
 |---|---|
-| `POST /api/session` `{userId}` | sign in as a seeded user |
-| `GET /api/users`, `GET /api/health` | seeded users; liveness + DB check |
+| `POST /api/auth/login` `{email, password}` | sets the signed session cookie; 401 on bad credentials, 429 after 5 failures |
+| `POST /api/auth/logout` | clears the cookie |
+| `GET /api/users` (signed in), `GET /api/health` | seeded users; liveness + DB check |
 | `GET/POST /api/documents` | list `{owned, shared}`; create |
 | `POST /api/documents/import` | multipart field `file` |
 | `GET/PATCH/DELETE /api/documents/[id]` | PATCH `{title?, content?}` needs edit access; DELETE owner only |
@@ -97,7 +99,7 @@ docs/               ARCHITECTURE.md, AI_WORKFLOW.md, VIDEO_OUTLINE.md, screensho
 
 ## Known limitations
 
-- Mock auth (see above); if two people edit the same document at once, the second saver gets a "changed elsewhere, reload" message (version check, no merge, no live cursors).
-- Free-host data resets as described at the top; no password reset, no real accounts, no document deletion UI.
+- Basic auth only (seeded accounts with one shared demo password, no sign-up or password reset); if two people edit the same document at once, the second saver gets a "changed elsewhere, reload" message (version check, no merge, no live cursors).
+- Free-host data resets as described at the top; no sign-up, no password reset, no document deletion UI.
 - Import keeps headings, bold/italic/underline and lists; tables and images in `.docx` are not preserved.
 - Route handlers are covered by the smoke script, not by unit tests (they need the Next.js runtime).
