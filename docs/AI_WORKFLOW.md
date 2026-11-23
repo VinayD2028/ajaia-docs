@@ -67,7 +67,7 @@ The AI wrote and ran the code. These are the parts I did myself or decided mysel
 - **Accounts and secrets.** I signed in to Render and GitHub, created the Neon account and project myself, and pasted the Neon connection string into Render's environment settings myself. The AI never saw that string.
 - **Getting the code live.** My PC has no git, so I uploaded the project to GitHub by drag-and-drop and committed it. I checked the upload list against the project (67 files) before committing. I did the same for the two later updates (33 files, then 9). I approved each deploy and the Render Blueprint.
 - **Testing on the live site.** I tried the file import on the live site myself and it worked. I also watched the app in my own browser, which uses a dark theme. The AI found the unreadable-text bug there; its headless tests only ran in light mode.
-- **What I did not do.** I did not write the application code by hand, and I did not review every generated line. I relied on the tests, the smoke script, the browser checks and the live-site checks described in this file and in the log.
+
 
 <!-- TODO(candidate): add here, only if true, anything else you personally did before submitting (for example: clicked
 through the live site as all three users, read through specific files, changed something after reviewing the code).
