@@ -47,7 +47,7 @@ npm run dev          # http://localhost:3000 ; creates ./data/pgdata and seeds d
 
 To reset all data, stop the server and delete the `data/` directory.
 
-Environment variables: `DATABASE_URL` (a `postgres://` URL; required in production), `DATABASE_SSL=true` (if the server needs TLS, as Neon does), `ALLOW_EMBEDDED_DB=true` (production only: allow the embedded database), `PGLITE_DIR` (embedded database directory when `DATABASE_URL` is unset; default `./data/pgdata`), `PORT` (default 3000).
+Environment variables: `DATABASE_URL` (a `postgres://` URL; required in production), `DATABASE_SSL=true` (if the server needs TLS, as Neon does), `ALLOW_EMBEDDED_DB=true` (production only: allow the embedded database), `PGLITE_DIR` (embedded database directory when `DATABASE_URL` is unset; default `./data/pgdata`), `SESSION_SECRET` (optional; signs session cookies, derived from `DATABASE_URL` if unset), `DEMO_PASSWORD` (optional; password given to the seeded users on first seed, default `ajaia-demo`), `PORT` (default 3000).
 
 ## Features
 
@@ -81,7 +81,7 @@ src/components/     Dashboard, Editor, Toolbar, ShareDialog, Header, SignInForm,
 src/lib/            db, seed, auth, access, documents, shares, import, validate, extensions, http
 tests/              unit tests + fixtures (sample.txt / .md / .docx)
 scripts/            api-smoke.sh, make-docx-fixture.py
-docs/               ARCHITECTURE.md, AI_WORKFLOW.md, VIDEO_OUTLINE.md, screenshots/
+docs/               ARCHITECTURE.md, AI_WORKFLOW.md, QA-REPORT.md, FINAL_REPORT.md, VIDEO_OUTLINE.md, screenshots/
 ```
 
 ## API summary (all JSON; identity comes from a signed, httpOnly `uid` session cookie)
