@@ -4,6 +4,7 @@ A lightweight collaborative document editor (Google Docs-inspired): create, rena
 documents, import files, and share documents between users. Built for the Ajaia full-stack assignment.
 
 - **Live app:** https://ajaia-docs-eu0h.onrender.com
+- **Demo:** https://drive.google.com/file/d/18iQve-n8Xf1Mc4lqiNVpUsHJHrcL_BjB/view?usp=drive_link
 - **Hosting note:** the web app runs on Render's free plan and stores data in a free Neon Postgres database, so
   documents survive sleep, restarts and redeploys. The first request after sleep (~15 min idle) can take about a
   minute, and Neon's compute also wakes from idle on first use.
