@@ -423,9 +423,12 @@ No pre-written prompt: driven interactively by the user's decisions. Instruction
 
 ---
 
-## Summary of AI Usage (DRAFT, to be finalized at the end)
+## Summary of AI Usage
 
-- **Decomposition:** seven small, single-layer prompts in dependency order (scaffold -> API -> editor UI -> sharing -> import -> tests -> deploy readiness), each with explicit acceptance criteria that I then verified by running code, not by reading it.
-- **Where verification mattered:** most real defects were found by checking output rather than trusting it: the docx underline loss, the smoke script mutating seed data, the `npm ci`/node-gyp deploy failure, the experimental template flags, and a wrong cookie assumption in my own prompt.
-- **Manual vs AI:** to be completed with what the user did by hand.
-- **With more time:** to be completed.
+- **Tools:** Claude (Sonnet 5.5) acted as prompt engineer, coding agent and process logger; headless Chrome (Playwright), Vitest, a bash smoke script, Claude in Chrome for GitHub, Render and Neon dashboards.
+- **Decomposition:** small, single-layer prompts in dependency order (scaffold, API, editor UI, sharing, import, tests, deploy readiness, docs, persistence), each with acceptance criteria that were checked by running code, not by reading it.
+- **Where the AI helped most:** the full vertical slice (schema, API, editor, sharing dialog, importer) in about the first half hour; breadth of tests (44 unit tests, a 54-check HTTP script, mutation checks); browser flows for several users; a live data-layer port from SQLite to Postgres with checks against a real Postgres server.
+- **Where verification mattered (real defects found by checking, not trusting):** `.docx` import silently dropped underlined text; the smoke script mutated seed data; `npm ci` tried to compile a native module and broke the Docker build; experimental template flags; a wrong cookie assumption in my own prompt; text unreadable in dark-mode browsers (found only on the live site); a ported test that read a property of a Promise; and an out-of-memory deploy when the embedded database fallback ran without a `DATABASE_URL`.
+- **What I did by hand:** chose the tools and architecture tradeoffs (SQLite, then Postgres, then Neon, and rejecting a same-disk SQLite backup), created the Render, GitHub and Neon accounts' side of the setup, pasted the database secret myself, uploaded the code (no git on my PC) and verified the file counts, approved each deploy, and tried the live file import myself. I did not hand-write the application code and did not read every generated line; I relied on tests, scripts and live checks.
+- **What I would do with more time:** real authentication instead of seeded users; real-time collaboration (or at least conflict detection) instead of last-write-wins; Markdown/PDF export and version history; scheduled database backups kept outside the host (the free Neon plan has only a short restore window); table and image support in `.docx` import; browser-level automated tests in CI.
+- **Honest limits:** the live app is a demo (mock login, free hosting that sleeps when idle). I have not yet recorded the walkthrough video or personally re-read the whole codebase.
