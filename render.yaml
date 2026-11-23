@@ -1,0 +1,12 @@
+# Render Blueprint: deploys the Dockerfile as a free web service.
+# NOTE: the free plan has no persistent disk. SQLite lives on the container's ephemeral
+# filesystem, so data resets whenever the instance restarts/redeploys (it is reseeded on boot).
+services:
+  - type: web
+    name: ajaia-docs
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_PATH
+        value: /app/data/app.db
